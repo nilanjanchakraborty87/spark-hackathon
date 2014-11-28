@@ -1,38 +1,41 @@
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.time.Instant;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.TemporalAccessor;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 class Comment {
 	private final String author;
 	private final String commentText;
-	private final Instant createdAt;
+	private final ZonedDateTime createdAt;
 	private final int points;
 	private final Long storyId;
 	private final Long parentId;
 
-	public static Comment fromString(String input) {
-		final String[] columns = split(input);
-		if (columns.length != 6) {
-			throw new IllegalArgumentException("Wrong no of columns: " + columns.length + " in " + Arrays.toString(columns));
+	public static Optional<Comment> fromString(String input) {
+		try {
+			final String[] columns = split(input);
+			if (columns.length != 6) {
+				throw new IllegalArgumentException("Wrong no of columns: " + columns.length + " in " + Arrays.toString(columns));
+			}
+			final String author = columns[0];
+			final String commentText = columns[1];
+			final ZonedDateTime date = parseIsoDate(columns[2]);
+			final int points = Integer.parseInt(columns[3]);
+			final Long storyId = parseLong(columns[4]);
+			final Long parentId = parseLong(columns[5]);
+			return Optional.of(new Comment(author, commentText, date, points, storyId, parentId));
+		} catch (Exception e) {
+			return Optional.empty();
 		}
-		final String author = columns[0];
-		final String commentText = columns[1];
-		final Instant date = parseIsoDate(columns[2]);
-		final int points = Integer.parseInt(columns[3]);
-		final Long storyId = parseLong(columns[4]);
-		final Long parentId = parseLong(columns[5]);
-		return new Comment(author, commentText, date, points, storyId, parentId);
 	}
 
 	private static Long parseLong(String column) {
-		if (!column.trim().isEmpty()) {
-			return Long.parseLong(column);
+		if (column != null && !column.trim().isEmpty()) {
+			return Long.parseLong(column.trim());
 		} else {
 			return null;
 		}
@@ -50,7 +53,7 @@ class Comment {
 		final String[] mergedColumns = new String[6];
 		int curColumn = 0;
 		for (int i = 0; i < columns.size(); i++, curColumn++) {
-			if (columns.get(i).startsWith("\"") && !columns.get(i).endsWith("\"")) {
+			if (isStartWithoutEnd(columns, i)) {
 				final int closingIndex = findClosingIndex(columns, i);
 				mergedColumns[curColumn] = stripQuotes(mergeBetween(columns, i, closingIndex));
 				i = closingIndex;
@@ -61,8 +64,13 @@ class Comment {
 		return mergedColumns;
 	}
 
+	private static boolean isStartWithoutEnd(ArrayList<String> columns, int i) {
+		final String s = columns.get(i);
+		return s.startsWith("\"") && (!s.endsWith("\"") || s.length() == 1);
+	}
+
 	private static String stripQuotes(String s) {
-		if (s.startsWith("\"") && s.endsWith("\"")) {
+		if (s.startsWith("\"") && s.endsWith("\"") && s.length() > 2) {
 			return s.substring(1, s.length() - 1);
 		} else {
 			return s;
@@ -72,7 +80,9 @@ class Comment {
 	private static String mergeBetween(List<String> columns, int startingIndex, int closingIndex) {
 		final List<String> quotedColumns = columns.subList(startingIndex, closingIndex + 1);
 		StringBuilder result = new StringBuilder();
-		quotedColumns.forEach(result::append);
+		for (String quotedColumn : quotedColumns) {
+			result.append(quotedColumn).append(",");
+		}
 		return result.toString();
 	}
 
@@ -85,12 +95,11 @@ class Comment {
 		throw new IllegalArgumentException("Unterminated quote in " + columns);
 	}
 
-	private static Instant parseIsoDate(String column) {
-		final TemporalAccessor parsed = DateTimeFormatter.ISO_INSTANT.parse(column);
-		return Instant.from(parsed);
+	private static ZonedDateTime parseIsoDate(String column) {
+		return ZonedDateTime.parse(column);
 	}
 
-	private Comment(String author, String commentText, Instant createdAt, int points, Long storyId, Long parentId) {
+	private Comment(String author, String commentText, ZonedDateTime createdAt, int points, Long storyId, Long parentId) {
 		this.author = author;
 		this.commentText = commentText;
 		this.createdAt = createdAt;
@@ -107,7 +116,7 @@ class Comment {
 		return commentText;
 	}
 
-	public Instant getCreatedAt() {
+	public ZonedDateTime getCreatedAt() {
 		return createdAt;
 	}
 
@@ -137,15 +146,14 @@ class Comment {
 	}
 
 	public static void main(String[] args) throws IOException {
-		final String s = "\"VMG\",\"Because you don&#x27;t have to rely on a political apparatus to spend the money wisely.<p>By the way, nobody has to wait for billionaires anywhere, if you want to help out in education, get up and do it.\",\"2014-05-30T08:19:34Z\",1,7820350,7820656";
-		final Comment comment = Comment.fromString(s);
-		System.out.println(comment);
-
-		Files
+		final long brokenCount = Files
 				.lines(Paths.get("/home/tomasz/tmp/comments.csv"))
 				.skip(1)
 				.map(Comment::fromString)
-				.forEach(System.out::println);
+				.filter(opt -> !opt.isPresent())
+				.count();
+
+		System.out.println(brokenCount);
 
 	}
 }
