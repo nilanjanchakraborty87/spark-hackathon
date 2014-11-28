@@ -1,14 +1,16 @@
+import org.codehaus.jackson.map.ObjectMapper;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 class Comment implements Serializable {
+
+	private static final ObjectMapper jsonParser = new ObjectMapper();
+
 	private final String author;
 	private final String commentText;
 	private final ZonedDateTime createdAt;
@@ -16,7 +18,7 @@ class Comment implements Serializable {
 	private final Long storyId;
 	private final Long parentId;
 
-	public static Optional<Comment> fromString(String input) {
+	public static Optional<Comment> fromCsv(String input) {
 		try {
 			final String[] columns = split(input);
 			if (columns.length != 6) {
@@ -31,6 +33,30 @@ class Comment implements Serializable {
 			return Optional.of(new Comment(author, commentText, date, points, storyId, parentId));
 		} catch (Exception e) {
 			return Optional.empty();
+		}
+	}
+
+	static Comment fromJson(String json) {
+		try {
+			final Map<String, Object> map = jsonParser.readValue(json, Map.class);
+			return new Comment(
+					map.get("author").toString(),
+					map.get("comment_text").toString(),
+					parseIsoDate(map.get("created_at").toString()),
+					((Number)map.get("points")).intValue(),
+					toLong(map.get("story_id")),
+					toLong(map.get("parent_id"))
+			);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private static Long toLong(Object val) {
+		if (val != null) {
+			return ((Number) val).longValue();
+		} else {
+			return null;
 		}
 	}
 
@@ -147,14 +173,15 @@ class Comment implements Serializable {
 	}
 
 	public static void main(String[] args) throws IOException {
-		final long brokenCount = Files
-				.lines(Paths.get("/home/tomasz/tmp/comments.csv"))
+		final long start = System.currentTimeMillis();
+		final long count = Files
+				.lines(Paths.get("/home/tomasz/tmp/spark/hn_hits.json"))
 				.skip(1)
-				.map(Comment::fromString)
-				.filter(opt -> !opt.isPresent())
+				.map(Comment::fromJson)
 				.count();
 
-		System.out.println(brokenCount);
+		System.out.println(count);
+		System.out.println(System.currentTimeMillis() - start + "ms");
 
 	}
 }
