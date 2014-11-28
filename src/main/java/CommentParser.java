@@ -1,3 +1,6 @@
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
@@ -10,15 +13,29 @@ class Comment {
 	private final String commentText;
 	private final Instant createdAt;
 	private final int points;
-	private final long storyId;
-	private final long parentId;
+	private final Long storyId;
+	private final Long parentId;
 
 	public static Comment fromString(String input) {
 		final String[] columns = split(input);
 		if (columns.length != 6) {
 			throw new IllegalArgumentException("Wrong no of columns: " + columns.length + " in " + Arrays.toString(columns));
 		}
-		return new Comment(columns[0], columns[1], parseIsoDate(columns[2]), Integer.parseInt(columns[3]), Long.parseLong(columns[4]), Long.parseLong(columns[5]));
+		final String author = columns[0];
+		final String commentText = columns[1];
+		final Instant date = parseIsoDate(columns[2]);
+		final int points = Integer.parseInt(columns[3]);
+		final Long storyId = parseLong(columns[4]);
+		final Long parentId = parseLong(columns[5]);
+		return new Comment(author, commentText, date, points, storyId, parentId);
+	}
+
+	private static Long parseLong(String column) {
+		if (!column.trim().isEmpty()) {
+			return Long.parseLong(column);
+		} else {
+			return null;
+		}
 	}
 
 	private static String[] split(String input) {
@@ -73,7 +90,7 @@ class Comment {
 		return Instant.from(parsed);
 	}
 
-	private Comment(String author, String commentText, Instant createdAt, int points, long storyId, long parentId) {
+	private Comment(String author, String commentText, Instant createdAt, int points, Long storyId, Long parentId) {
 		this.author = author;
 		this.commentText = commentText;
 		this.createdAt = createdAt;
@@ -119,9 +136,16 @@ class Comment {
 		return sb.toString();
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		final String s = "\"VMG\",\"Because you don&#x27;t have to rely on a political apparatus to spend the money wisely.<p>By the way, nobody has to wait for billionaires anywhere, if you want to help out in education, get up and do it.\",\"2014-05-30T08:19:34Z\",1,7820350,7820656";
 		final Comment comment = Comment.fromString(s);
 		System.out.println(comment);
+
+		Files
+				.lines(Paths.get("/home/tomasz/tmp/comments.csv"))
+				.skip(1)
+				.map(Comment::fromString)
+				.forEach(System.out::println);
+
 	}
 }
