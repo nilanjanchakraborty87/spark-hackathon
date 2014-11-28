@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
@@ -7,7 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-class Comment {
+class Comment implements Serializable {
 	private final String author;
 	private final String commentText;
 	private final ZonedDateTime createdAt;
