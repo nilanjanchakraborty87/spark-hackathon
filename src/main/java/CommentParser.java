@@ -1,7 +1,10 @@
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.StringJoiner;
 
 class Comment {
 	private final String author;
@@ -12,12 +15,52 @@ class Comment {
 	private final long parentId;
 
 	public static Comment fromString(String input) {
-		final String[] columns = input.split(";");
+		final String[] columns = split(input);
 		if (columns.length != 6) {
-			throw new IllegalArgumentException(Arrays.toString(columns));
+			throw new IllegalArgumentException("Wrong no of columns: " + columns.length + " in " + Arrays.toString(columns));
 		}
-		new Comment(columns[0], columns[1], parseIsoDate(columns[2]), Integer.parseInt(columns[3]), Long.parseLong(columns[4]), Long.parseLong(columns[5]));
+		return new Comment(columns[0], columns[1], parseIsoDate(columns[2]), Integer.parseInt(columns[3]), Long.parseLong(columns[4]), Long.parseLong(columns[5]));
+	}
 
+	private static String[] split(String input) {
+		final ArrayList<String> columns = new ArrayList<>(Arrays.asList(input.split(",")));
+		return mergeQuoted(columns);
+	}
+
+	/**
+	 * Merge parts in case comma inside quotes
+	 */
+	private static String[] mergeQuoted(ArrayList<String> columns) {
+		final String[] mergedColumns = new String[6];
+		int curColumn = 0;
+		for (int i = 0; i < columns.size(); i++, curColumn++) {
+			if (columns.get(i).startsWith("\"") && !columns.get(i).endsWith("\"")) {
+				final int closingIndex = findClosingIndex(columns, i);
+				mergedColumns[curColumn] = mergeBetween(columns, i, closingIndex);
+				i = closingIndex;
+			} else {
+				mergedColumns[curColumn] = columns.get(i);
+			}
+		}
+		return mergedColumns;
+	}
+
+	private static String mergeBetween(List<String> columns, int startingIndex, int closingIndex) {
+		final List<String> quotedColumns = columns.subList(startingIndex, closingIndex + 1);
+		StringBuilder result = new StringBuilder();
+		for (String quotedColumn : quotedColumns) {
+			result.append(quotedColumn);
+		}
+		return result.toString();
+	}
+
+	private static int findClosingIndex(ArrayList<String> columns, int startIdx) {
+		for (int i = startIdx + 1; i < columns.size(); i++) {
+			if (columns.get(i).endsWith("\"")) {
+				return i;
+			}
+		}
+		throw new IllegalArgumentException("Unterminated quote in " + columns);
 	}
 
 	private static Instant parseIsoDate(String column) {
@@ -58,8 +101,22 @@ class Comment {
 		return parentId;
 	}
 
+	@Override
+	public String toString() {
+		final StringBuilder sb = new StringBuilder("Comment{");
+		sb.append("author='").append(author).append('\'');
+		sb.append(", commentText='").append(commentText).append('\'');
+		sb.append(", createdAt=").append(createdAt);
+		sb.append(", points=").append(points);
+		sb.append(", storyId=").append(storyId);
+		sb.append(", parentId=").append(parentId);
+		sb.append('}');
+		return sb.toString();
+	}
+
 	public static void main(String[] args) {
 		final String s = "\"VMG\",\"Because you don&#x27;t have to rely on a political apparatus to spend the money wisely.<p>By the way, nobody has to wait for billionaires anywhere, if you want to help out in education, get up and do it.\",\"2014-05-30T08:19:34Z\",1,7820350,7820656";
-		new Comment()
+		final Comment comment = Comment.fromString(s);
+
 	}
 }
