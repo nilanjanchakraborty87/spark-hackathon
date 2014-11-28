@@ -1,4 +1,6 @@
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -33,21 +35,27 @@ class Comment {
 		for (int i = 0; i < columns.size(); i++, curColumn++) {
 			if (columns.get(i).startsWith("\"") && !columns.get(i).endsWith("\"")) {
 				final int closingIndex = findClosingIndex(columns, i);
-				mergedColumns[curColumn] = mergeBetween(columns, i, closingIndex);
+				mergedColumns[curColumn] = stripQuotes(mergeBetween(columns, i, closingIndex));
 				i = closingIndex;
 			} else {
-				mergedColumns[curColumn] = columns.get(i);
+				mergedColumns[curColumn] = stripQuotes(columns.get(i));
 			}
 		}
 		return mergedColumns;
 	}
 
+	private static String stripQuotes(String s) {
+		if (s.startsWith("\"") && s.endsWith("\"")) {
+			return s.substring(1, s.length() - 1);
+		} else {
+			return s;
+		}
+	}
+
 	private static String mergeBetween(List<String> columns, int startingIndex, int closingIndex) {
 		final List<String> quotedColumns = columns.subList(startingIndex, closingIndex + 1);
 		StringBuilder result = new StringBuilder();
-		for (String quotedColumn : quotedColumns) {
-			result.append(quotedColumn);
-		}
+		quotedColumns.forEach(result::append);
 		return result.toString();
 	}
 
@@ -61,9 +69,8 @@ class Comment {
 	}
 
 	private static Instant parseIsoDate(String column) {
-		return null;
-//		final TemporalAccessor parsed = DateTimeFormatter.ISO_INSTANT.parse(column);
-//		return Instant.from(parsed);
+		final TemporalAccessor parsed = DateTimeFormatter.ISO_INSTANT.parse(column);
+		return Instant.from(parsed);
 	}
 
 	private Comment(String author, String commentText, Instant createdAt, int points, long storyId, long parentId) {
