@@ -14,17 +14,14 @@ public class Reports {
 	public static void main(String[] args) {
 		input = args[0];
 		SparkConf sparkConf = new SparkConf().setAppName("HackerNews");
+//		sparkConf.setMaster("local[*]");
 		sparkConf.setMaster("local");
 		JavaSparkContext spark = new JavaSparkContext(sparkConf);
-		byHour(spark).forEach(System.out::println);
-	}
+		final long startTime = System.currentTimeMillis();
 
-	private static List<Tuple2<Integer, Integer>> byLength(JavaSparkContext spark) {
-		return loadAndParse(spark)
-				.groupBy(comment -> comment.getCreatedAt().getHour())
-				.map(pair -> new Tuple2<>(pair._1(), Iterables.size(pair._2())))
-				.sortBy(Tuple2::_1, true, 1)
-				.collect();
+		byHour(spark).forEach(System.out::println);
+
+		System.out.println(System.currentTimeMillis() - startTime + "ms");
 	}
 
 	private static List<Tuple2<Integer, Integer>> byHour(JavaSparkContext spark) {
