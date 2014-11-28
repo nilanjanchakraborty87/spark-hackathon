@@ -1,10 +1,7 @@
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.StringJoiner;
 
 class Comment {
 	private final String author;
@@ -64,8 +61,9 @@ class Comment {
 	}
 
 	private static Instant parseIsoDate(String column) {
-		final TemporalAccessor parsed = DateTimeFormatter.ISO_INSTANT.parse(column);
-		return Instant.from(parsed);
+		return null;
+//		final TemporalAccessor parsed = DateTimeFormatter.ISO_INSTANT.parse(column);
+//		return Instant.from(parsed);
 	}
 
 	private Comment(String author, String commentText, Instant createdAt, int points, long storyId, long parentId) {
@@ -117,6 +115,6 @@ class Comment {
 	public static void main(String[] args) {
 		final String s = "\"VMG\",\"Because you don&#x27;t have to rely on a political apparatus to spend the money wisely.<p>By the way, nobody has to wait for billionaires anywhere, if you want to help out in education, get up and do it.\",\"2014-05-30T08:19:34Z\",1,7820350,7820656";
 		final Comment comment = Comment.fromString(s);
-
+		System.out.println(comment);
 	}
 }
